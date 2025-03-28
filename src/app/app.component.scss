@@ -1,0 +1,138 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #2c3e50;
+}
+
+.metronome {
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.time-display {
+  margin: 20px 0;
+  font-size: 1.2em;
+}
+
+.current-time {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.current-bpm, .current-segment {
+  margin: 5px 0;
+}
+
+.controls {
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.control-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1.2em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.control-button:hover {
+  background-color: #2980b9;
+}
+
+.stop-button {
+  background-color: #e74c3c;
+}
+
+.stop-button:hover {
+  background-color: #c0392b;
+}
+
+.stop-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.segments {
+  margin: 30px 0;
+  text-align: left;
+}
+
+.segment-list {
+  margin: 15px 0;
+}
+
+.segment-item {
+  background-color: white;
+  border-radius: 5px;
+  padding: 10px;
+  margin: 10px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.segment-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+
+.segment-controls > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.segment-controls label {
+  font-size: 0.9em;
+  margin-bottom: 5px;
+}
+
+.segment-controls input {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
+.remove-button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.add-button {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.summary {
+  margin-top: 20px;
+  font-weight: bold;
+}
+
+.loading {
+  font-size: 1.2em;
+  color: #7f8c8d;
+}
