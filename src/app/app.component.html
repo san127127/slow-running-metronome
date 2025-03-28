@@ -2,70 +2,77 @@
   <h1>{{ title }}</h1>
 
   @if (isLoading) {
-  <div class="loading">加載節拍器中...</div>
+    <div class="loading">加載節拍器中...</div>
   } @else {
-  <div class="metronome">
-    <div class="time-display">
-      <div class="current-time">{{ displayTime }}</div>
-      <div class="current-bpm">當前節奏: {{ currentBpm }} BPM</div>
-      <div class="current-segment">
-        當前階段: {{ currentSegmentIndex + 1 }}/{{ segments.length }}
-      </div>
-    </div>
-
-    <div class="controls">
-      <button (click)="toggleMetronome()" class="control-button">
-        @if (isPlaying) { @if (isPaused) { 繼續 } @else { 暫停 } } @else { 開始
-        }
-      </button>
-      <button
-        (click)="stopMetronome()"
-        class="control-button stop-button"
-        [disabled]="!isPlaying && !isPaused"
-      >
-        停止
-      </button>
-    </div>
-
-    <div class="segments">
-      <h3>節奏階段設定</h3>
-      <div class="segment-list">
-        @for (segment of segments; track $index; let i = $index) {
-        <div class="segment-item">
-          <div class="segment-controls">
-            <div>
-              <label>持續時間 (分鐘):</label>
-              <input
-                type="number"
-                min="1"
-                [value]="segment.duration"
-                (change)="updateSegment(i, 'duration', segment.duration)"
-              />
-            </div>
-            <div>
-              <label>節奏 (BPM):</label>
-              <input
-                type="number"
-                min="150"
-                max="200"
-                step="5"
-                [value]="segment.bpm"
-                (change)="updateSegment(i, 'bpm', segment.bpm)"
-              />
-            </div>
-            <button (click)="removeSegment(i)" class="remove-button">
-              刪除
-            </button>
-          </div>
+    <div class="metronome">
+      <div class="time-display">
+        <div class="current-time">{{ displayTime() }}</div>
+        <div class="current-bpm">當前節奏: {{ currentBpm }} BPM</div>
+        <div class="current-segment">
+          當前階段: {{ currentSegmentIndex + 1 }}/{{ segments().length }}
         </div>
-        }
       </div>
-      <button (click)="addSegment()" class="add-button">添加階段</button>
-    </div>
 
-    <div class="summary">
-      <p>總訓練時間: {{ formatTime(totalDuration / 60) }}</p>
+      <div class="controls">
+        <button (click)="toggleMetronome()" class="control-button">
+          @if (isPlaying) {
+            @if (isPaused) {
+              繼續
+            } @else {
+              暫停
+            }
+          } @else {
+            開始
+          }
+        </button>
+        <button
+          (click)="stopMetronome()"
+          class="control-button stop-button"
+          [disabled]="!isPlaying && !isPaused"
+        >
+          停止
+        </button>
+      </div>
+
+      <div class="segments">
+        <h3>節奏階段設定</h3>
+        <div class="segment-list">
+          @for (segment of segments(); track $index; let i = $index) {
+            <div class="segment-item">
+              <div class="segment-controls">
+                <div>
+                  <label>持續時間 (分鐘):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    [value]="segment.durationMinutes"
+                    (change)="updateSegment(i, 'durationMinutes', $event)"
+                  />
+                </div>
+                <div>
+                  <label>節奏 (BPM):</label>
+                  <input
+                    type="number"
+                    min="150"
+                    max="200"
+                    step="5"
+                    [value]="segment.bpm"
+                    (change)="updateSegment(i, 'bpm', $event)"
+                  />
+                </div>
+                <button (click)="removeSegment(i)" class="remove-button">
+                  刪除
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+        <button (click)="addSegment()" class="add-button">添加階段</button>
+      </div>
+
+      <div class="summary">
+        <p>總訓練時間: {{ totalDurationMinutes() }}</p>
+      </div>
     </div>
-  </div>
   }
 </div>

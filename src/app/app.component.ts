@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 
 interface RhythmSegment {
-  duration: number; // 分鐘
+  durationMinutes: number;
   bpm: number;
 }
 
@@ -15,24 +15,28 @@ export class AppComponent {
   isPlaying = false;
   isPaused = false;
   currentBpm = 60;
-  segments: RhythmSegment[] = [
-    { duration: 10, bpm: 150 },
-    { duration: 20, bpm: 170 }
-  ];
   audioContext: AudioContext;
   timer: any;
   beatSound?: AudioBuffer;
   isLoading = true;
   currentSegmentIndex = 0;
-  elapsedTime = 0; // 秒
-  segmentElapsedTime = 0; // 當前段已進行時間(秒)
-  totalDuration = 0; // 總時長(秒)
-  displayTime = '00:00:00';
+  segmentElapsedTime = 0;
+
+  segments = signal<RhythmSegment[]>([
+    { durationMinutes: 10, bpm: 150 },
+    { durationMinutes: 20, bpm: 170 }
+  ]);
+  totalDurationMinutes = computed(() =>
+    this.segments()
+      .reduce((total, segment) => total + segment.durationMinutes, 0)
+  );
+
+  elapsedSeconds = signal(0);
+  displayTime = computed(() => formatDisplayTime(this.elapsedSeconds()));
 
   constructor() {
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.loadSound();
-    this.calculateTotalDuration();
   }
 
   async loadSound() {
@@ -73,9 +77,9 @@ export class AppComponent {
     } else {
       // 全新開始
       this.currentSegmentIndex = 0;
-      this.elapsedTime = 0;
+      this.elapsedSeconds.set(0);
       this.segmentElapsedTime = 0;
-      this.currentBpm = this.segments[0].bpm;
+      this.currentBpm = this.segments()[0].bpm;
     }
 
     this.isPlaying = true;
@@ -93,9 +97,8 @@ export class AppComponent {
     this.isPaused = false;
     clearInterval(this.timer);
     this.currentSegmentIndex = 0;
-    this.elapsedTime = 0;
+    this.elapsedSeconds.set(0);
     this.segmentElapsedTime = 0;
-    this.displayTime = '00:00:00';
   }
 
   updateMetronome() {
@@ -111,13 +114,12 @@ export class AppComponent {
       if (!this.isPlaying) return;
 
       // 更新時間
-      this.elapsedTime += updateInterval / 1000;
+      this.elapsedSeconds.update(x => x + updateInterval / 1000);
       this.segmentElapsedTime += updateInterval / 1000;
-      this.updateDisplayTime();
 
       // 檢查是否需要切換到下一段
-      const currentSegment = this.segments[this.currentSegmentIndex];
-      if (this.segmentElapsedTime >= currentSegment.duration * 60) {
+      const currentSegment = this.segments()[this.currentSegmentIndex];
+      if (this.segmentElapsedTime >= currentSegment.durationMinutes) {
         this.segmentElapsedTime = 0;
         this.currentSegmentIndex++;
 
@@ -126,51 +128,46 @@ export class AppComponent {
           return;
         }
 
-        this.currentBpm = this.segments[this.currentSegmentIndex].bpm;
+        this.currentBpm = this.segments()[this.currentSegmentIndex].bpm;
         lastBeatTime = 0; // 重置節拍計時
       }
 
       // 播放節拍
-      if (this.elapsedTime * 1000 - lastBeatTime >= beatInterval) {
+      if (this.elapsedSeconds() * 1000 - lastBeatTime >= beatInterval) {
         this.playBeat();
-        lastBeatTime = this.elapsedTime * 1000;
+        lastBeatTime = this.elapsedSeconds() * 1000;
       }
     }, updateInterval);
   }
 
-  updateDisplayTime() {
-    const hours = Math.floor(this.elapsedTime / 3600);
-    const minutes = Math.floor((this.elapsedTime % 3600) / 60);
-    const seconds = Math.floor(this.elapsedTime % 60);
-
-    this.displayTime =
-      `${hours.toString().padStart(2, '0')}:` +
-      `${minutes.toString().padStart(2, '0')}:` +
-      `${seconds.toString().padStart(2, '0')}`;
-  }
-
   addSegment() {
-    this.segments.push({ duration: 5, bpm: 60 });
-    this.calculateTotalDuration();
+    this.segments.update(x => [...x, { durationMinutes: 10, bpm: 150 }]);
   }
 
   removeSegment(index: number) {
-    this.segments.splice(index, 1);
-    this.calculateTotalDuration();
+    this.segments.update(x => x.filter((_, i) => i !== index));
   }
 
-  updateSegment(index: number, field: 'duration' | 'bpm', value: number) {
-    this.segments[index][field] = value;
-    this.calculateTotalDuration();
-  }
+  updateSegment(index: number, field: 'durationMinutes' | 'bpm', event: Event) {
+    const newValue = +(event.target as HTMLInputElement).value;
+    this.segments.update(x => {
+      const newSegments = [...x];
+      newSegments[index] = {
+        ...newSegments[index],
+        [field]: newValue
+      };
 
-  calculateTotalDuration() {
-    this.totalDuration = this.segments.reduce((total, segment) => total + segment.duration * 60, 0);
+      return newSegments;
+    });
   }
+}
 
-  formatTime(minutes: number): string {
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hrs > 0 ? `${hrs}小時${mins}分鐘` : `${mins}分鐘`;
-  }
+function formatDisplayTime(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  return `${hours.toString().padStart(2, '0')}:` +
+    `${minutes.toString().padStart(2, '0')}:` +
+    `${seconds.toString().padStart(2, '0')}`;
 }
