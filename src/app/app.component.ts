@@ -6,7 +6,7 @@ interface RhythmSegment {
   bpm: number;
 }
 
-type State = 'started' | 'paused' | 'stopped';
+type State = 'started' | 'paused' | 'stopped' | 'finished';
 
 const audioContext = new AudioContext();
 
@@ -37,8 +37,8 @@ export class AppComponent {
   state = signal<State>('stopped');
 
   segments = signal<RhythmSegment[]>([
-    { durationMinutes: 10, bpm: 150 },
-    { durationMinutes: 20, bpm: 170 },
+    { durationMinutes: 10, bpm: 160 },
+    { durationMinutes: 30, bpm: 180 },
   ]);
   totalDurationMinutes = computed(() =>
     this.segments()
@@ -63,28 +63,36 @@ export class AppComponent {
 
   currentBpm = computed(() => this.segments()[this.currentSegmentIndex()].bpm);
 
+  canEditSegments = computed(() => this.state() === 'stopped' || this.state() === 'finished');
+
   startPlaySound() {
-    const interval = 60000 / this.currentBpm();
-    let counter = 0;
+    const playSoundWithBpm = (bpm: number) => {
+      clearInterval(this.startPlaySoundId);
 
-    this.startPlaySoundId = setInterval(() => {
-      const sound = counter % 2 === 0 ? this.tickSound.value() : this.tockSound.value();
+      const interval = 60000 / bpm;
+      let counter = 0;
 
-      if (!sound) {
-        return;
-      }
+      this.startPlaySoundId = setInterval(() => {
+        const sound = counter % 2 === 0 ? this.tickSound.value() : this.tockSound.value();
 
-      const source = audioContext.createBufferSource();
-      source.buffer = sound;
-      source.connect(audioContext.destination);
-      source.start();
+        if (!sound) {
+          return;
+        }
 
-      counter++;
-    }, interval);
-  }
+        const source = audioContext.createBufferSource();
+        source.buffer = sound;
+        source.connect(audioContext.destination);
+        source.start();
 
-  stopPlaySound() {
-    clearInterval(this.startPlaySoundId);
+        counter++;
+
+        if (this.currentBpm() !== bpm) {
+          playSoundWithBpm(this.currentBpm());
+        }
+      }, interval);
+    }
+
+    playSoundWithBpm(this.currentBpm());
   }
 
   start() {
@@ -93,20 +101,33 @@ export class AppComponent {
 
     this.elapsedSecondsTimerId = setInterval(() => {
       this.elapsedSeconds.update(x => x + 1);
+
+      if (this.elapsedSeconds() >= this.totalDurationMinutes() * 60) {
+        this.finish();
+      }
     }, 1000);
   }
 
   stop() {
     this.state.set('stopped');
-    this.stopPlaySound();
+    this.elapsedSeconds.set(0);
 
+    clearInterval(this.startPlaySoundId);
     clearInterval(this.elapsedSecondsTimerId);
   }
 
   pause() {
     this.state.set('paused');
-    this.stopPlaySound();
 
+    clearInterval(this.startPlaySoundId);
+    clearInterval(this.elapsedSecondsTimerId);
+  }
+
+  finish() {
+    this.state.set('finished');
+    this.elapsedSeconds.set(0);
+
+    clearInterval(this.startPlaySoundId);
     clearInterval(this.elapsedSecondsTimerId);
   }
 

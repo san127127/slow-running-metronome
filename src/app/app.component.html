@@ -17,13 +17,18 @@
         @if (state() === "stopped") {
           <button (click)="start()" class="control-button">開始</button>
         }
+        @if (state() === "finished") {
+          <button (click)="start()" class="control-button">
+            運動結束! 按此重新開始
+          </button>
+        }
         @if (state() === "started") {
           <button (click)="pause()" class="control-button">暫停</button>
         }
         @if (state() === "paused") {
           <button (click)="start()" class="control-button">繼續</button>
         }
-        @if (state() !== "stopped") {
+        @if (state() !== "stopped" && state() !== "finished") {
           <button (click)="stop()" class="control-button stop-button">
             停止
           </button>
@@ -41,6 +46,7 @@
                   <input
                     type="number"
                     min="1"
+                    [disabled]="!canEditSegments()"
                     [value]="segment.durationMinutes"
                     (change)="updateSegment(i, 'durationMinutes', $event)"
                   />
@@ -52,22 +58,33 @@
                     min="150"
                     max="200"
                     step="10"
+                    [disabled]="!canEditSegments()"
                     [value]="segment.bpm"
                     (change)="updateSegment(i, 'bpm', $event)"
                   />
                 </div>
-                <button (click)="removeSegment(i)" class="remove-button">
+                <button
+                  (click)="removeSegment(i)"
+                  class="remove-button"
+                  [disabled]="!canEditSegments()"
+                >
                   刪除
                 </button>
               </div>
             </div>
           }
         </div>
-        <button (click)="addSegment()" class="add-button">添加階段</button>
+        <button
+          (click)="addSegment()"
+          class="add-button"
+          [disabled]="!canEditSegments()"
+        >
+          添加階段
+        </button>
       </div>
 
       <div class="summary">
-        <p>總訓練時間: {{ totalDurationMinutes() }}</p>
+        <p>總訓練時間: {{ totalDurationMinutes() }} 分鐘</p>
       </div>
     </div>
   }
