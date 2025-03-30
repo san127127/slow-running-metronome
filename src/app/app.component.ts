@@ -40,12 +40,14 @@ export class AppComponent {
     { durationMinutes: 10, bpm: 160 },
     { durationMinutes: 30, bpm: 180 },
   ]);
+
+  elapsedSeconds = signal(0);
+
   totalDurationMinutes = computed(() =>
     this.segments()
       .reduce((total, segment) => total + segment.durationMinutes, 0)
   );
 
-  elapsedSeconds = signal(0);
   displayTime = computed(() => formatDisplayTime(this.elapsedSeconds()));
 
   currentSegmentIndex = computed(() => {
