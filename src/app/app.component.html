@@ -1,37 +1,33 @@
 <div class="container">
   <h1>{{ title }}</h1>
 
-  @if (isLoading) {
+  @if (tickSound.isLoading() || tockSound.isLoading()) {
     <div class="loading">加載節拍器中...</div>
   } @else {
     <div class="metronome">
       <div class="time-display">
         <div class="current-time">{{ displayTime() }}</div>
-        <div class="current-bpm">當前節奏: {{ currentBpm }} BPM</div>
+        <div class="current-bpm">當前節奏: {{ currentBpm() }} BPM</div>
         <div class="current-segment">
-          當前階段: {{ currentSegmentIndex + 1 }}/{{ segments().length }}
+          當前階段: {{ currentSegmentIndex() + 1 }}/{{ segments().length }}
         </div>
       </div>
 
       <div class="controls">
-        <button (click)="toggleMetronome()" class="control-button">
-          @if (isPlaying) {
-            @if (isPaused) {
-              繼續
-            } @else {
-              暫停
-            }
-          } @else {
-            開始
-          }
-        </button>
-        <button
-          (click)="stopMetronome()"
-          class="control-button stop-button"
-          [disabled]="!isPlaying && !isPaused"
-        >
-          停止
-        </button>
+        @if (state() === "stopped") {
+          <button (click)="start()" class="control-button">開始</button>
+        }
+        @if (state() === "started") {
+          <button (click)="pause()" class="control-button">暫停</button>
+        }
+        @if (state() === "paused") {
+          <button (click)="start()" class="control-button">繼續</button>
+        }
+        @if (state() !== "stopped") {
+          <button (click)="stop()" class="control-button stop-button">
+            停止
+          </button>
+        }
       </div>
 
       <div class="segments">
@@ -55,7 +51,7 @@
                     type="number"
                     min="150"
                     max="200"
-                    step="5"
+                    step="10"
                     [value]="segment.bpm"
                     (change)="updateSegment(i, 'bpm', $event)"
                   />

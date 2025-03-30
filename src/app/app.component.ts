@@ -1,30 +1,44 @@
-import { Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, resource, signal } from '@angular/core';
+import { clearInterval, setInterval } from 'worker-timers';
 
 interface RhythmSegment {
   durationMinutes: number;
   bpm: number;
 }
 
+type State = 'started' | 'paused' | 'stopped';
+
+const audioContext = new AudioContext();
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent {
   title = '超慢跑節拍器';
-  isPlaying = false;
-  isPaused = false;
-  currentBpm = 60;
-  audioContext: AudioContext;
-  timer: any;
-  beatSound?: AudioBuffer;
-  isLoading = true;
-  currentSegmentIndex = 0;
-  segmentElapsedTime = 0;
+
+  startPlaySoundId = 0
+  elapsedSecondsTimerId = 0;
+
+  tickSound = resource({
+    loader: async () => await fetch('tick.wav')
+      .then(x => x.arrayBuffer())
+      .then(buffer => audioContext.decodeAudioData(buffer))
+  });
+
+  tockSound = resource({
+    loader: async () => await fetch('tock.wav')
+      .then(x => x.arrayBuffer())
+      .then(buffer => audioContext.decodeAudioData(buffer))
+  });
+
+  state = signal<State>('stopped');
 
   segments = signal<RhythmSegment[]>([
     { durationMinutes: 10, bpm: 150 },
-    { durationMinutes: 20, bpm: 170 }
+    { durationMinutes: 20, bpm: 170 },
   ]);
   totalDurationMinutes = computed(() =>
     this.segments()
@@ -34,110 +48,66 @@ export class AppComponent {
   elapsedSeconds = signal(0);
   displayTime = computed(() => formatDisplayTime(this.elapsedSeconds()));
 
-  constructor() {
-    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    this.loadSound();
-  }
-
-  async loadSound() {
-    try {
-      const response = await fetch('assets/metronome.wav');
-      const arrayBuffer = await response.arrayBuffer();
-      this.beatSound = await this.audioContext.decodeAudioData(arrayBuffer);
-      this.isLoading = false;
-    } catch (error) {
-      console.error('加載音效失敗:', error);
-      this.isLoading = false;
-    }
-  }
-
-  playBeat() {
-    if (!this.beatSound) return;
-
-    const source = this.audioContext.createBufferSource();
-    source.buffer = this.beatSound;
-    source.connect(this.audioContext.destination);
-    source.start();
-  }
-
-  toggleMetronome() {
-    if (this.isPlaying) {
-      this.pauseMetronome();
-    } else {
-      this.startMetronome();
-    }
-  }
-
-  startMetronome() {
-    if (this.isPlaying && !this.isPaused) return;
-
-    if (this.isPaused) {
-      // 從暫停恢復
-      this.isPaused = false;
-    } else {
-      // 全新開始
-      this.currentSegmentIndex = 0;
-      this.elapsedSeconds.set(0);
-      this.segmentElapsedTime = 0;
-      this.currentBpm = this.segments()[0].bpm;
-    }
-
-    this.isPlaying = true;
-    this.updateMetronome();
-  }
-
-  pauseMetronome() {
-    this.isPlaying = false;
-    this.isPaused = true;
-    clearInterval(this.timer);
-  }
-
-  stopMetronome() {
-    this.isPlaying = false;
-    this.isPaused = false;
-    clearInterval(this.timer);
-    this.currentSegmentIndex = 0;
-    this.elapsedSeconds.set(0);
-    this.segmentElapsedTime = 0;
-  }
-
-  updateMetronome() {
-    if (this.timer) {
-      clearInterval(this.timer);
-    }
-
-    const updateInterval = 100; // 100毫秒更新一次時間
-    const beatInterval = 60000 / this.currentBpm; // 節拍間隔(毫秒)
-    let lastBeatTime = 0;
-
-    this.timer = setInterval(() => {
-      if (!this.isPlaying) return;
-
-      // 更新時間
-      this.elapsedSeconds.update(x => x + updateInterval / 1000);
-      this.segmentElapsedTime += updateInterval / 1000;
-
-      // 檢查是否需要切換到下一段
-      const currentSegment = this.segments()[this.currentSegmentIndex];
-      if (this.segmentElapsedTime >= currentSegment.durationMinutes) {
-        this.segmentElapsedTime = 0;
-        this.currentSegmentIndex++;
-
-        if (this.currentSegmentIndex >= this.segments.length) {
-          this.stopMetronome();
-          return;
-        }
-
-        this.currentBpm = this.segments()[this.currentSegmentIndex].bpm;
-        lastBeatTime = 0; // 重置節拍計時
+  currentSegmentIndex = computed(() => {
+    let t = this.elapsedSeconds();
+    for (let i = 0; i < this.segments().length; i++) {
+      if (t < this.segments()[i].durationMinutes * 60) {
+        return i;
       }
 
-      // 播放節拍
-      if (this.elapsedSeconds() * 1000 - lastBeatTime >= beatInterval) {
-        this.playBeat();
-        lastBeatTime = this.elapsedSeconds() * 1000;
+      t -= this.segments()[i].durationMinutes * 60;
+    }
+
+    return this.segments().length - 1;
+  });
+
+  currentBpm = computed(() => this.segments()[this.currentSegmentIndex()].bpm);
+
+  startPlaySound() {
+    const interval = 60000 / this.currentBpm();
+    let counter = 0;
+
+    this.startPlaySoundId = setInterval(() => {
+      const sound = counter % 2 === 0 ? this.tickSound.value() : this.tockSound.value();
+
+      if (!sound) {
+        return;
       }
-    }, updateInterval);
+
+      const source = audioContext.createBufferSource();
+      source.buffer = sound;
+      source.connect(audioContext.destination);
+      source.start();
+
+      counter++;
+    }, interval);
+  }
+
+  stopPlaySound() {
+    clearInterval(this.startPlaySoundId);
+  }
+
+  start() {
+    this.state.set('started');
+    this.startPlaySound();
+
+    this.elapsedSecondsTimerId = setInterval(() => {
+      this.elapsedSeconds.update(x => x + 1);
+    }, 1000);
+  }
+
+  stop() {
+    this.state.set('stopped');
+    this.stopPlaySound();
+
+    clearInterval(this.elapsedSecondsTimerId);
+  }
+
+  pause() {
+    this.state.set('paused');
+    this.stopPlaySound();
+
+    clearInterval(this.elapsedSecondsTimerId);
   }
 
   addSegment() {
