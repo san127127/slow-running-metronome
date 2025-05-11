@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:github": "ng build --configuration production --base-href /slow-running-metronome/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "http": "ng build && http-server -p 8080 -c-1 ./dist/slow-running-metronome/browser"
